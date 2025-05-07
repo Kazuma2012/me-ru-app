@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ひみつのメールアプリ📬</title>
+  <meta charset="UTF-8">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 1em; }
+    input, textarea { width: 100%; margin-bottom: 10px; padding: 8px; }
+    button { padding: 8px 12px; margin-right: 5px; }
+    .msg { border: 1px solid #ccc; margin: 8px 0; padding: 8px; border-radius: 8px; }
+    .read { background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1>メールアプリ📬</h1>
+
+  <h3>あなたのアドレス（ニックネーム）</h3>
+  <input id="myAddress" placeholder="例: apple123">
+  <button onclick="loadMessages()">📥 メール読み込み</button>
+
+  <hr>
+  <h3>✉️ メール送信</h3>
+  宛先アドレス：<input id="to">
+  メッセージ：<textarea id="msg"></textarea>
+  <button onclick="send()">送信</button>
+
+  <hr>
+  <h3>📨 受信ボックス</h3>
+  <div id="inbox"></div>
+
+  <hr>
+  <h3>📩 返信</h3>
+  宛先: <input id="replyTo">
+  メッセージ: <textarea id="replyText"></textarea>
+  <button onclick="sendReply()">返信</button>
+
+  <script>
+    // 🔧 Firebaseの設定（自分のプロジェクト情報に置き換えてね）
+    const firebaseConfig = {
+      apiKey: "AIzaSyARKS33U4ZxQQv2qK3yJgd9CUPyJy0ldBI",
+      authDomain: "messeji-app-98931.firebaseapp.com",
+      databaseURL: "https://messeji-app-98931.firebaseio.com",
+      projectId: "messeji-app-98931",
+      storageBucket: "messeji-app-98931.firebasestorage.app",
+      messagingSenderId: "51810179187",
+      appId: "1:51810179187:web:c6dd19a86563faa4da7206"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function send() {
+      const from = document.getElementById("myAddress").value;
+      const to = document.getElementById("to").value;
+      const text = document.getElementById("msg").value;
+      db.ref("messages/" + to).push({
+        from: from,
+        text: text,
+        time: new Date().toISOString(),
+        read: false
+      }).then(() => {
+        alert("送信完了！");
+        document.getElementById("msg").value = "";
+      });
+    }
+
+    function loadMessages() {
+      const addr = document.getElementById("myAddress").value;
+      const inbox = document.getElementById("inbox");
+      inbox.innerHTML = "";
+
+      db.ref("messages/" + addr).on("value", (snapshot) => {
+        inbox.innerHTML = "";
+        const data = snapshot.val();
+        if (!data) {
+          inbox.innerHTML = "<p>📭 メッセージはまだ届いていません</p>";
+          return;
+        }
+
+        Object.entries(data).forEach(([id, msg]) => {
+          const div = document.createElement("div");
+          div.className = "msg" + (msg.read ? " read" : "");
+
+          div.innerHTML = `
+            <b>From:</b> ${msg.from}<br>
+            <b>時間:</b> ${new Date(msg.time).toLocaleString()}<br>
+            <p>${msg.text}</p>
+            <button onclick="markRead('${addr}', '${id}')">✅ 既読</button>
+            <button onclick="deleteMsg('${addr}', '${id}')">🗑 削除</button>
+            <button onclick="prepareReply('${msg.from}')">📩 返信</button>
+          `;
+
+          inbox.appendChild(div);
+        });
+      });
+    }
+
+    function markRead(addr, id) {
+      db.ref(`messages/${addr}/${id}`).update({ read: true });
+    }
+
+    function deleteMsg(addr, id) {
+      db.ref(`messages/${addr}/${id}`).remove();
+    }
+
+    function prepareReply(to) {
+      document.getElementById("replyTo").value = to;
+      document.getElementById("replyText").focus();
+    }
+
+    function sendReply() {
+      const from = document.getElementById("myAddress").value;
+      const to = document.getElementById("replyTo").value;
+      const text = document.getElementById("replyText").value;
+      db.ref("messages/" + to).push({
+        from: from,
+        text: text,
+        time: new Date().toISOString(),
+        read: false
+      }).then(() => {
+        alert("返信送ったよ！");
+        document.getElementById("replyText").value = "";
+      });
+    }
+  </script>
+</body>
+</html>
